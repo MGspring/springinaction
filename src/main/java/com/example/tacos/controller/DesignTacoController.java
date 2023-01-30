@@ -1,43 +1,52 @@
-package com.example.tacos.web;
+package com.example.tacos.controller;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import javax.validation.Valid;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.SessionAttributes;
 
 import com.example.tacos.Ingredient;
 import com.example.tacos.Ingredient.Type;
+import com.example.tacos.Order1;
 import com.example.tacos.Taco;
+import com.example.tacos.data.IngredientRepository;
+import com.example.tacos.data.TacoRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Controller
 @RequestMapping("/design")
+@SessionAttributes("order1")
 public class DesignTacoController {
+
+	private final IngredientRepository ingredientRepo;
+
+	private TacoRepository tacoRepo;
+
+	@Autowired
+	public DesignTacoController(IngredientRepository ingredientRepo, TacoRepository tacoRepo)
+	{
+		this.ingredientRepo = ingredientRepo;
+		this.tacoRepo = tacoRepo;
+	}
 
 	@GetMapping
 	public String showDesignForm(Model model) {
-		List<Ingredient> ingredients = Arrays.asList(
-			new Ingredient("FLTO", "Flour Tortilla", Ingredient.Type.WRAP),
-			new Ingredient("COTO", "Corn Tortilla", Ingredient.Type.WRAP),
-			new Ingredient("GRBF", "Ground Beef", Ingredient.Type.PROTEIN),
-			new Ingredient("CARN", "Carnitas", Ingredient.Type.PROTEIN),
-			new Ingredient("TMTO", "Diced Tomatoes", Ingredient.Type.VEGGIES),
-			new Ingredient("LETC", "Lettuce", Ingredient.Type.VEGGIES),
-			new Ingredient("CHED", "Cheddar", Ingredient.Type.CHEESE),
-			new Ingredient("JACK", "Monterrey Jack", Ingredient.Type.CHEESE),
-			new Ingredient("SLSA", "Salsa", Ingredient.Type.SAUCE),
-			new Ingredient("SRCR", "Sour Cream", Ingredient.Type.SAUCE)
-		);
+		List<Ingredient> ingredients = new ArrayList<>();
+		ingredientRepo.findAll().forEach(i -> ingredients.add(i));
 
 		Type[] types = Ingredient.Type.values();
 		for(Type type : types) {
@@ -51,11 +60,12 @@ public class DesignTacoController {
 	}
 
 	@PostMapping
-	public String processDesign(@Valid Taco design, Errors errors) {
+	public String processDesign(@Valid Taco design, Errors errors, @ModelAttribute Order1 order1) {
 		if(errors.hasErrors()){
 			return "desing";
 		}
-		log.info("processing design: " + design);
+		Taco saved = tacoRepo.save(design);
+		order1.addDesign(saved);
 
 		return "redirect:/orders/current";
 	}
@@ -66,5 +76,14 @@ public class DesignTacoController {
 			.stream()
 			.filter(x -> x.getType().equals(type))
 			.collect(Collectors.toList());
+	}
+
+	@ModelAttribute(name = "order")
+	public Order1 order1() {
+		return new Order1();
+	}
+	@ModelAttribute(name = "taco")
+	public Taco taco() {
+		return new Taco();
 	}
 }
